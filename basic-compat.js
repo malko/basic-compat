@@ -5,6 +5,7 @@
 * @licence Dual licence LGPL / MIT
 * @changelog
 *            - 2013-01-23 - add scoping to selectors to react more like jquery
+*                         - better performance in selectors
 *            - 2013-01-21 - add removeAttr and support for plainObject and function as value for attr method
 *                         - bug correction in extend regarding arrays properties
 *            - 2013-01-18 - add isArray/isFunction/isNumeric/isObject/isEmptyObject/isPlainObject/filter/not methods
@@ -32,12 +33,20 @@ if(! $){
 		}else if( isArray(selector) ){
 			c = selector;
 		}else	if(! isArray(context) ){
-			context && (context === window || context.document) && (context = context.document);
-			var scope = '';
-			//scope context if required
-			context && selector.match(/(^\s*[:>]|\S\s+\S)/) && (scope = '[data-bcscope="'+bcscope(context)+'"] ');
-			c = Array.prototype.slice.call((context||document).querySelectorAll(scope+selector),0) || [];
-			scope && bcscope(context,true);
+			if( ((! context )|| (context.nodeType === 9)) && idExp.test(selector) ){
+				c = [(context||document).getElementById(selector.substr(1))];
+			}else if( classExp.test(selector)){
+				c = slice((context||document).getElementsByClassName(selector.substr(1)));
+			}else if( tagExp.test(selector) ){
+				c = slice((context||document).getElementsByTagName(selector));
+			}else{
+				context && (context === window || context.document) && (context = context.document);
+				var scope = '';
+				//scope context if required
+				context && selector.match(/(^\s*[:>]|\S\s+\S)/) && (scope = '#'+(context.id || (context.id=bcScopeId))+' ');
+				c = slice((context||document).querySelectorAll(scope+selector));
+				scope && context.id===bcScopeId && (context.id=null);
+			}
 		}else{
 			c = [];
 			$.each(context,function(k,v){
@@ -46,7 +55,7 @@ if(! $){
 				});
 			});
 		}
-		$.each($.fn,function(k,v){
+		c.hasOwnProperty('each') || $.each($.fn,function(k,v){
 			c[k] = v;
 		});
 		return c;
@@ -128,7 +137,7 @@ if(! $){
 		,handlers={elmts:{},handlers:{}}
 		,_uid=0
 		,uid=function(o){ return o._uid || (o._uid=++_uid); }
-		,bcscope=function(e,remove){ return remove?e.removeAttribute('data-bcscope'):(e.getAttribute('data-bcscope')|| e.setAttribute('data-bcscope',++_uid) ||_uid); }
+		,bcScopeId = 'bcScopeSelectorId'
 		,addEvent = (window.document.addEventListener ? function(type, e, cb){ e.addEventListener(type, cb, false);} : function(type, e, cb){ e.attachEvent('on' + type, cb);} )
 		,removeEvent = (window.document.removeEventListener ? function(type, e, cb){ e.removeEventListener(type, cb, false); }  : function(type, e, cb){ e.detachEvent('on' + type, cb);} )
 		,on=function(type,elmt,cb,selector){
@@ -201,6 +210,10 @@ if(! $){
 		}
 		,isDomNode = $.isDomNode = function(n){ return (isObject(n) && n.nodeType); }
 		,isDomElmt = $.isDomElmt = function(n){ return (isDomNode(n) && n.nodeType===1); }
+		,classExp =  /^\s*\.([a-z0-9-]+)\s*$/i
+		,idExp =  /^\s*#([a-z0-9-]+)\s*$/i
+		,tagExp =  /^\s*([a-z]+)\s*$/i
+		,slice = function(v){ return [].slice.call(v,0); }
 	;
 
 	$.fn = {
