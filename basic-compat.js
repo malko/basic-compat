@@ -4,6 +4,7 @@
 * @author jgotti at modedemploi dot fr for agence-modedemploi.com
 * @licence Dual licence LGPL / MIT
 * @changelog
+*            - 2013-01-29 - big correction in not
 *            - 2013-01-23 - add scoping to selectors to react more like jquery
 *                         - better performance in selectors
 *            - 2013-01-21 - add removeAttr and support for plainObject and function as value for attr method
@@ -403,7 +404,7 @@ if(! $){
 			}
 			var res = [],testFn = getMatchFn(selector);
 			$.each(this,function(k,elmt){
-				testFn(elmt,selector,k) && res.push(elmt);
+				testFn(elmt,selector,k) || res.push(elmt);
 			});
 			return $(res);
 		}
