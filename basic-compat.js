@@ -4,6 +4,9 @@
 * @author jgotti at modedemploi dot fr for agence-modedemploi.com
 * @licence Dual licence LGPL / MIT
 * @changelog
+*            - 2013-03-25 - now can work together with other $ library if basicCompatExportName is previously defined
+*            - 2013-03-01 - bugcorrections in prop and toggleClass
+*            - 2013-01-30 - add append/appendTo + support for $(htmlString)
 *            - 2013-01-29 - big correction in not
 *            - 2013-01-23 - add scoping to selectors to react more like jquery
 *                         - better performance in selectors
@@ -16,10 +19,10 @@
 *            - 2012-12-07 - add css/attr/prop/html/remove/find methods
 *            - 2012-11-28 - more jquery like syntax and some events related stuffs
 */
-(function($){
+(function(exportName){
 	"use strict";
 	/*jshint expr:true*/
-if(! $){
+if( (! $) || exportName !== '$' ){
 	/**
 	* can be used as querySelectorAll (selector as first parameter and optionaly domElement used as context passed as second parameter )
 	* or if first parameter is a function just a shorthand of $.ready
@@ -36,10 +39,13 @@ if(! $){
 		}else	if(! isArray(context) ){
 			if( ((! context )|| (context.nodeType === 9)) && idExp.test(selector) ){
 				c = [(context||document).getElementById(selector.substr(1))];
+				c[0] === null && (c=[]);
 			}else if( classExp.test(selector)){
 				c = slice((context||document).getElementsByClassName(selector.substr(1)));
 			}else if( tagExp.test(selector) ){
 				c = slice((context||document).getElementsByTagName(selector));
+			}else if( htmlExp.test(selector)){
+				c = fragment(selector);
 			}else{
 				context && (context === window || context.document) && (context = context.document);
 				var scope = '';
@@ -142,7 +148,6 @@ if(! $){
 		,addEvent = (window.document.addEventListener ? function(type, e, cb){ e.addEventListener(type, cb, false);} : function(type, e, cb){ e.attachEvent('on' + type, cb);} )
 		,removeEvent = (window.document.removeEventListener ? function(type, e, cb){ e.removeEventListener(type, cb, false); }  : function(type, e, cb){ e.detachEvent('on' + type, cb);} )
 		,on=function(type,elmt,cb,selector){
-
 			$.each(type.split(/\s+/),function(k,type){
 				var parts = type.split('.'), hid=uid(cb);
 				handlers.handlers[hid] = cb;
@@ -214,9 +219,35 @@ if(! $){
 		,classExp =  /^\s*\.([a-z0-9-]+)\s*$/i
 		,idExp =  /^\s*#([a-z0-9-]+)\s*$/i
 		,tagExp =  /^\s*([a-z]+)\s*$/i
+		,htmlExp = /<(?:!|\w)+/
 		,slice = function(v){ return [].slice.call(v,0); }
+		,fragment=function(htmlStr){
+			var f = document.createDocumentFragment().appendChild(document.createElement('div'))
+				, firstTagName = htmlStr.match(/<(\w+)/)
+				, wrapper=''
+			;
+			//-- check for specific wrapper
+			firstTagName && (firstTagName=firstTagName[1]).toLowerCase();
+			if( firstTagName ){
+				if( firstTagName.match(/^(thead|tfoot|tbody|caption|colgroup|col)$/) ){
+					wrapper= "<table>";
+				}else if(firstTagName==='tr'){
+					wrapper= "<table><tbody>";
+				}else if(firstTagName.match(/^t[hd]/) ){
+					wrapper= "<table><tbody><tr>";
+				}else if(firstTagName==='option'){
+					wrapper= "<select>";
+				}
+			}
+			f.innerHTML = wrapper+htmlStr+wrapper.replace(/</g,'</');
+			if( wrapper ){
+				wrapper = wrapper.match(/</g);
+				wrapper = wrapper ? wrapper.length:0;
+				for(;wrapper--;f=f.childNodes[0]);
+			}
+			return slice(f.childNodes);
+		}
 	;
-
 	$.fn = {
 		each:function(cb){ $.each(this,cb); return this; }
 		,on:function(types,selector,data,handler){
@@ -226,7 +257,7 @@ if(! $){
 				selector = data = Undef ;
 			}else if(al === 3 ){
 				if( isObject(selector) ){
-					data = selector; data=Undef;
+					data=selector; data=Undef;
 				}else{
 					data=Undef;
 				}
@@ -294,7 +325,7 @@ if(! $){
 		}
 		,removeAttr:function(attrName){ return this.attr(attrName,'');}
 		,prop:function(propName,value){
-			return value!==Undef?(this[0] && this[0][propName]) : $.each(this,function(k,v){ v[propName] = value;});
+			return value===Undef?(this[0] && this[0][propName]) : $.each(this,function(k,v){ v[propName] = value;});
 		}
 		,html:function(html){
 			return html===Undef?this[0][isDomElmt(this[0])?'innerHTML':'value'] : $.each(this,function(k,elmt){ elmt[isDomElmt(elmt)? 'innerHTML' : 'value']=html;});
@@ -335,11 +366,11 @@ if(! $){
 			});
 		}
 		,toggleClass:function(className,addOrRemove){
-			addOrRemove = (addOrRemove===Undef) ? hasClass : (addOrRemove?ok:nok);
+			addOrRemove = (addOrRemove===Undef) ? hasClass : (addOrRemove?nok:ok);
 			className = className.split(/\s+/);
 			return $.each(this,function(k,elmt){
 				$.each(className,function(){
-					$(elmt)[ addOrRemove(elmt,this)?'addClass':'removeClass' ](this);
+					$(elmt)[ addOrRemove(elmt,this)?'removeClass':'addClass' ](this);
 				});
 			});
 		}
@@ -419,7 +450,32 @@ if(! $){
 			});
 			return $(res);
 		}
+		,append:function(content){
+			var self = this,a=arguments;
+			a.length > 1 && (content = slice(a));
+			if( isArray(content) ){
+				$.each(content,function(k,v){ self.append(v); });
+				return self;
+			}
+			if( isFunction(content) ){
+				return $.each(this,function(k,v){
+					isDomElmt(v) && $(v).append(content.call(v,k,v.innerHTML));
+				});
+			}
+			if( typeof content === 'string' ){
+				return this.append(fragment(content));
+			}
+			if( isDomNode(content) ){
+				return $.each(this,function(k,v){
+					v.appendChild(k?content.cloneNode(true):content);
+				});
+			}
+			return this;
+		}
+		,appendTo:function(target){
+			$(target).append(this);
+			return this;
+		}
 	};
-
-	window.$ = $;
-}})(typeof $ !== 'undefined'? $ : false);
+	window[ExportName] = $;
+}})(typeof(basicCompatExportName) !== 'undefined' ? basicCompatExportName : '$');
