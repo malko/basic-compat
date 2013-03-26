@@ -45,4 +45,5 @@ currently implemented methods are:
  - filter
  - not
  - closest (no support for context)
- 
+ - append/appendTo
+
