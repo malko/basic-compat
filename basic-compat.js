@@ -4,6 +4,7 @@
 * @author jgotti at modedemploi dot fr for agence-modedemploi.com
 * @licence Dual licence LGPL / MIT
 * @changelog
+*            - 2013-03-26 - add one method + make on/one with selector working when event is triggered on a child
 *            - 2013-03-25 - now can work together with other $ library if basicCompatExportName is previously defined
 *            - 2013-03-01 - bugcorrections in prop and toggleClass
 *            - 2013-01-30 - add append/appendTo + support for $(htmlString)
@@ -147,17 +148,34 @@ if( (! window.$) || exportName !== '$' ){
 		,bcScopeId = 'bcScopeSelectorId'
 		,addEvent = (window.document.addEventListener ? function(type, e, cb){ e.addEventListener(type, cb, false);} : function(type, e, cb){ e.attachEvent('on' + type, cb);} )
 		,removeEvent = (window.document.removeEventListener ? function(type, e, cb){ e.removeEventListener(type, cb, false); }  : function(type, e, cb){ e.detachEvent('on' + type, cb);} )
-		,on=function(type,elmt,cb,selector){
+		,on=function(type,elmt,cb,selector,data,unique){
 			$.each(type.split(/\s+/),function(k,type){
-				var parts = type.split('.'), hid=uid(cb);
+				var parts = type.split('.'), hid=uid(cb), proxy=Undef;
 				handlers.handlers[hid] = cb;
+				if( selector || data || unique){
+					proxy = function(e){
+						var t=$(e.target),res=Undef;
+						unique && off(type,elmt,cb,selector);
+						if( selector===Undef || t.is(selector) || t.closest(selector).length ){
+							data && (e.data = data); res = cb.call(t[0],e);
+						}else if( (!selector) && (!data) ){
+							res = cb.call(t[0],e);
+						}
+						if(false===res){
+							e.preventDefault();
+							e.stopPropagation();
+                        }
+						return res;
+					};
+				}
 				(handlers.elmts[uid(elmt)] || (handlers.elmts[uid(elmt)]=[])).push({
 					ns:parts.length<2?Undef:parts.slice(1).sort().join(' ')
 					,type:parts[0]
 					,handler:hid
 					,s:selector||Undef
+					,proxy:proxy
 				});
-				addEvent(parts[0],elmt,cb);
+				addEvent(parts[0],elmt,proxy || cb);
 			});
 		}
 		,off=function(type,elmt,cb,selector){
@@ -173,7 +191,7 @@ if( (! window.$) || exportName !== '$' ){
 					&& (!selector || hdef.s===selector)
 					&& (!hid || hdef.handler===hid)
 					&& (!ns || (hdef.ns && hdef.ns.match(new RegExp('(^| )'+ns+'( |$)'))))
-					&& ( removeEvent(hdef.type,elmt,handlers.handlers[hdef.handler]) || handlers.elmts[eid].splice(i,1) );
+					&& ( removeEvent(hdef.type,elmt,hdef.proxy || handlers.handlers[hdef.handler]) || handlers.elmts[eid].splice(i,1) );
 					unused = true;
 					$.each(handlers.elmts,function(eid,eHandlers){
 						$.each(eHandlers,function(k,hDef){
@@ -186,6 +204,20 @@ if( (! window.$) || exportName !== '$' ){
 					unused && delete handlers.handlers[hdef.handler];
 				}
 			});
+		}
+		,onPrepareParams=function(types,selector,data,handler){
+			var a = arguments,al=a.length;
+			handler || (handler = a[al-1]);
+			if(al === 2 ){
+				selector = data = Undef ;
+			}else if(al === 3 ){
+				if( isObject(selector) ){
+					data=selector; data=Undef;
+				}else{
+					data=Undef;
+				}
+			}
+			return {types:types,selector:selector,data:data,handler:handler};
 		}
 		,ok=function(){return true;}
 		,nok=function(){return false;}
@@ -251,20 +283,15 @@ if( (! window.$) || exportName !== '$' ){
 	$.fn = {
 		each:function(cb){ $.each(this,cb); return this; }
 		,on:function(types,selector,data,handler){
-			var a = arguments,al=a.length,cb;
-			handler || (handler = a[al-1]);
-			if(al === 2 ){
-				selector = data = Undef ;
-			}else if(al === 3 ){
-				if( isObject(selector) ){
-					data=selector; data=Undef;
-				}else{
-					data=Undef;
-				}
-			}
-			cb = (selector || data) ? function(e){ if( selector===Undef || $(e.target).is(selector) ){ data && (e.data = data); return handler.call(e.target,e); } } : handler ;
+			var a = onPrepareParams.apply(null,arguments);
 			return $.each(this,function(k,elmt){
-				on(types,elmt,cb,selector);
+				on(a.types,elmt,a.handler,a.selector,a.data);
+			});
+		}
+		,one:function(types,selector,data,handler){
+			var a = onPrepareParams.apply(null,arguments);
+			return $.each(this,function(k,elmt){
+				on(a.types,elmt,a.handler,a.selector,a.data,true);
 			});
 		}
 		,off:function(types,selector,handler){
