@@ -22,12 +22,12 @@
 (function(exportName){
 	"use strict";
 	/*jshint expr:true*/
-if( (! $) || exportName !== '$' ){
+if( (! window.$) || exportName !== '$' ){
 	/**
 	* can be used as querySelectorAll (selector as first parameter and optionaly domElement used as context passed as second parameter )
 	* or if first parameter is a function just a shorthand of $.ready
 	*/
-	$ = function(selector,context){ // not supporting IE
+	var $ = function(selector,context){ // not supporting IE
 		if( isFunction(selector) ){
 			return $.ready(selector);
 		}
@@ -477,5 +477,5 @@ if( (! $) || exportName !== '$' ){
 			return this;
 		}
 	};
-	window[ExportName] = $;
+	window[exportName] = $;
 }})(typeof(basicCompatExportName) !== 'undefined' ? basicCompatExportName : '$');
