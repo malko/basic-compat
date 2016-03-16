@@ -1,0 +1,23 @@
+{
+  "name": "basic-compat",
+  "main": "basic-compat.min.js",
+  "homepage": "https://github.com/malko/basic-compat",
+  "authors": [
+    "Jonathan Gotti <jgotti@jgotti.org>"
+  ],
+  "description": "lightweight jquery/zepto compatibility layer with mobile target in mind — ￼Edit",
+  "moduleType": [],
+  "keywords": [
+    "jquery",
+    "compatibility"
+  ],
+  "license": "LGPL / MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "version": "0.0.1"
+}
