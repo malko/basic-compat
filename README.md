@@ -27,7 +27,7 @@ currently implemented methods are:
  - on
  - off
  - trigger
- - css (don't support .css( propertyName, function(index, value) ) or any compatibility as on opacity or other stuffs)
+ - css (doesn't support .css( propertyName, function(index, value) ) or any compatibility as on opacity or other stuffs)
  - attr
  - removeAttr
  - prop
@@ -46,4 +46,4 @@ currently implemented methods are:
  - not
  - closest (no support for context)
  - append/appendTo
-
+ - val (doesn't support val(function))

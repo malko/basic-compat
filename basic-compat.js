@@ -1,9 +1,10 @@
 /**
 * minimal jquery/zepto compatibility layer
 * be aware that won't mimic jquery/zepto at all but offer a similar api for basic stuffs as querySelectorAll and addEventListener ...
-* @author jgotti at modedemploi dot fr for agence-modedemploi.com
+* @author jgotti at jgotti dot org for www.agence-modedemploi.com
 * @licence Dual licence LGPL / MIT
 * @changelog
+*            - 2016-03-21 - add val method
 *            - 2013-03-25 - now can work together with other $ library if basicCompatExportName is previously defined
 *            - 2013-03-01 - bugcorrections in prop and toggleClass
 *            - 2013-01-30 - add append/appendTo + support for $(htmlString)
@@ -475,6 +476,22 @@ if( (! window.$) || exportName !== '$' ){
 		,appendTo:function(target){
 			$(target).append(this);
 			return this;
+		}
+		,val:function(value) {
+			var self = this, input, res;
+			if( value ){
+				$.each(this, function(k,v){ v.value = value; });
+				return self;
+			}
+			input = self[0];
+			if( input.tagName !== 'SELECT' ) {
+				return input.value;
+			}
+			res = [];
+			self.find('option[selected]').each(function(k,v){
+				res.push(v.value);
+			});
+			return res.length ? (input.multiple ? res : res[0]) : null;
 		}
 	};
 	window[exportName] = $;
